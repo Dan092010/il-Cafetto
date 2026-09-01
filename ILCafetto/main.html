@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>IL CAFETO</title>
+
+  <!-- Fuente moderna -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Biblioteca para generar PDF -->
+  <script src="lib/jspdf.umd.min.js"></script>
+  <script src="lib/html2canvas.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+      background: linear-gradient(135deg, #382a19 0%, #5a4a2f 100%);
+      color: #0f0f0f;
+    }
+
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      max-width: 150px;
+      border-radius: 50%;
+    }
+
+    h1, h2 {
+      text-align: center;
+      font-weight: 600;
+    }
+
+    input[type="number"] {
+      width: 50px;
+    }
+
+    #productos, #carrito {
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #020202;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #382a19;
+      color: white;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .filtros {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filtros select, .filtros input {
+      padding: 5px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 5px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #factura button:hover {
+      background-color: #0056b3;
+    }
+
+    .exportar-btn {
+      background-color: #2196F3;
+      margin-top: 20px;
+    }
+
+    .exportar-btn:hover {
+      background-color: #0b7dda;
+    }
+
+    .factura-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 5px;
+    }
+
+    #factura {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+
+    .factura-title {
+      text-align: center;
+      color: #382a19;
+      margin-bottom: 20px;
+    }
+
+    .factura-footer {
+      margin-top: 20px;
+      text-align: center;
+      font-style: italic;
+      color: #555;
+    }
+
+    /* Estilos mejorados para la ventana de impresión */
+    #printContainer {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 20px;
+      padding-bottom: 20px;
+      overflow: auto;
+    }
+
+    #printContent {
+      background: white;
+      width: 80mm;
+      min-height: 50mm;
+      padding: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      margin-bottom: 60px;
+    }
+
+    .print-actions {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      z-index: 1001;
+    }
+
+    .print-actions button {
+      margin: 0 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+
+    /* Estilos para la impresión en rollo */
+    @media print {
+      @page {
+        size: 80mm auto;
+        margin: 0;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #printContent, #printContent * {
+        visibility: visible;
+      }
+      #printContent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 80mm !important;
+        margin: 0;
+        padding: 5mm;
+        box-shadow: none;
+        font-size: 12px;
+      }
+      #printContent table {
+        width: 100% !important;
+        font-size: 12px;
+      }
+      #printContent th, #printContent td {
+        padding: 3px !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-actions {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Logo -->
+  <img src="logo.jpg" alt="Logo del restaurante" class="logo">
+
+  <h1>Menú</h1>
+
+  <div class="filtros">
+    <label for="categoriaFiltro">Categoría:</label>
+    <select id="categoriaFiltro" onchange="filtrarProductos()">
+      <option value="todas">Todas</option>
+      <option value="carnes">Carnes</option>
+      <option value="sandwiches">Sandwiches</option>
+      <option value="entradas">Entradas</option>
+      <option value="cafes">Cafés</option>
+      <option value="postres">Postres</option>
+      <option value="aromaticas">Aromáticas</option>
+      <option value="bebidas">Bebidas</option>
+      <option value="cervezas">Cervezas</option>
+      <option value="cocteles">Cocteles</option>
+      <option value="sangria">Sangría</option>
+      <option value="vino">Vino</option>
+      <option value="ensaladas">Ensaladas</option>
+      <option value="adiciones">Adiciones</option>
+      <option value="otros">Otros</option>
+    </select>
+
+    <input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="filtrarProductos()">
+  </div>
+
+  <div id="productos">
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Precio</th>
+          <th>Cantidad</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="listaProductos"></tbody>
+    </table>
+  </div>
+
+  <h2>Carrito</h2>
+  <div id="carrito">
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Precio Unitario</th>
+          <th>Subtotal</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="itemsCarrito"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3"><strong>Total</strong></td>
+          <td id="totalCarrito"></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <label for="mesa">Número de Mesa:</label>
+  <input type="number" id="mesa" min="1" required>
+
+  <button onclick="generarFactura()">Generar Factura</button>
+  <button onclick="vaciarCarrito()">Vaciar Carrito</button>
+  <button class="exportar-btn" onclick="exportarFacturasCSV()">Exportar Facturas a CSV</button>
+
+  <div id="factura" class="hidden">
+    <div class="factura-header">
+      <div><strong>Folio:</strong> <span id="facturaFolio"></span></div>
+      <div><strong>Mesa:</strong> <span id="facturaMesa"></span></div>
+      <div><strong>Fecha:</strong> <span id="facturaFecha"></span></div>
+    </div>
+    <h2 class="factura-title">Factura - IL CAFETO</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Precio Unitario</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody id="facturaDetalle"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3"><strong>Total a Pagar</strong></td>
+          <td id="facturaTotal"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="factura-footer">
+      ¡Vuelve pronto! 😉
+    </div>
+    <br>
+    <button onclick="imprimirFactura()" class="no-print">🖨️ Imprimir Factura</button>
+  </div>
+
+  <script>
+    // Inicializar jsPDF
+    const { jsPDF } = window.jspdf;
+
+    const productos = [
+      { nombre: 'Maíz sencillo', precio: 20000, categoria: 'entradas' },
+      { nombre: 'Maíz especial', precio: 26000, categoria: 'entradas' },
+      { nombre: 'Nachos', precio: 16000, categoria: 'entradas' },
+      { nombre: 'Cazuela pequeña', precio: 21000, categoria: 'entradas' },
+      { nombre: 'Cazuela grande', precio: 27000, categoria: 'entradas' },
+      { nombre: 'Tabla de quesos', precio: 55000, categoria: 'entradas' },
+      { nombre: 'Medio combinado iberico', precio: 35000, categoria: 'entradas' },
+      { nombre: 'Combinado iberico', precio: 70000, categoria: 'entradas' },
+      { nombre: 'Expreso', precio: 4500, categoria: 'cafes' },
+      { nombre: 'Americano', precio: 6000, categoria: 'cafes' },
+      { nombre: 'Capuchino', precio: 8000, categoria: 'cafes' },
+      { nombre: 'Moka caliente', precio: 9000, categoria: 'cafes' },
+      { nombre: 'Carajillo amaretto', precio: 11000, categoria: 'cafes' },
+      { nombre: 'Carajillo whisky', precio: 14000, categoria: 'cafes' },
+      { nombre: 'Carajillo coñac', precio: 15000, categoria: 'cafes' },
+      { nombre: 'Carajillo ron', precio: 9500, categoria: 'cafes' },
+      { nombre: 'Latte machiato', precio: 15000, categoria: 'cafes' },
+      { nombre: 'Irlandés', precio: 15000, categoria: 'cafes' },
+      { nombre: 'Café helado', precio: 12500, categoria: 'cafes' },
+      { nombre: 'Moka frío', precio: 13500, categoria: 'cafes' },
+      { nombre: 'Frapuchino', precio: 14500, categoria: 'cafes' },
+      { nombre: 'Brownie', precio: 12500, categoria: 'postres' },
+      { nombre: 'Fresas chantilly', precio: 15000, categoria: 'postres' },
+      { nombre: 'Aromática radicional', precio: 5000, categoria: 'aromaticas' },
+      { nombre: 'Aromática frutos rojos', precio: 7000, categoria: 'aromaticas' },
+      { nombre: 'Mixto', precio: 24000, categoria: 'sandwiches' },
+      { nombre: 'Carne Desmechada', precio: 24000, categoria: 'sandwiches' },
+      { nombre: 'Ibérico', precio: 32000, categoria: 'sandwiches' },
+      { nombre: 'Tradicional', precio: 18500, categoria: 'sandwiches' },
+      { nombre: 'Hawaiano', precio: 20000, categoria: 'sandwiches' },
+      { nombre: 'Pollo', precio: 23000, categoria: 'sandwiches' },
+      { nombre: 'Pollo desmechado', precio: 21000, categoria: 'sandwiches' },
+      { nombre: 'Bacon', precio: 23000, categoria: 'sandwiches' },
+      { nombre: 'Vegetariano', precio: 20000, categoria: 'sandwiches' },
+      { nombre: 'Atún', precio: 24000, categoria: 'sandwiches' },
+      { nombre: 'Cerdo', precio: 22000, categoria: 'sandwiches' },
+      { nombre: 'Brocheta de cerdo', precio: 38000, categoria: 'carnes' },
+      { nombre: 'Pechuga gratinada', precio: 33000, categoria: 'carnes' },
+      { nombre: 'Cañon', precio: 35000, categoria: 'carnes' },
+      { nombre: 'Milanesa', precio: 36000, categoria: 'carnes' },
+      { nombre: 'Solomito', precio: 39000, categoria: 'carnes' },
+      { nombre: 'Salmon', precio: 45000, categoria: 'carnes' },
+      { nombre: 'Ensalada en bowl', precio: 25000, categoria: 'ensaladas' },
+      { nombre: 'Limonada natural', precio: 8000, categoria: 'bebidas' },
+      { nombre: 'Limonada lychee', precio: 13500, categoria: 'bebidas' },
+      { nombre: 'Coco', precio: 14000, categoria: 'bebidas' },
+      { nombre: 'Cereza', precio: 12500, categoria: 'bebidas' },
+      { nombre: 'Hierbabuena', precio: 8500, categoria: 'bebidas' },
+      { nombre: 'Piña Hierbabuena', precio: 11000, categoria: 'bebidas' },
+      { nombre: 'Jugo agua', precio: 7500, categoria: 'bebidas' },
+      { nombre: 'Jugo leche', precio: 9000, categoria: 'bebidas' },
+      { nombre: 'Milo frio', precio: 9500, categoria: 'bebidas' },
+      { nombre: 'Botella agua', precio: 4000, categoria: 'bebidas' },
+      { nombre: 'Soda michelada', precio: 8000, categoria: 'bebidas' },
+      { nombre: 'Soda saborizada', precio: 13000, categoria: 'bebidas' },
+      { nombre: 'Batido de proteína', precio: 17000, categoria: 'bebidas' },
+      { nombre: 'Smoothie', precio: 15000, categoria: 'bebidas' },
+      { nombre: 'Queso', precio: 4000, categoria: 'adiciones' },
+      { nombre: 'Champiñones', precio: 4000, categoria: 'adiciones' },
+      { nombre: 'Tocineta', precio: 6000, categoria: 'adiciones' },
+      { nombre: 'Nachos', precio: 6000, categoria: 'adiciones' },
+      { nombre: 'Licor', precio: 4000, categoria: 'adiciones' },
+      { nombre: 'BBC', precio: 11000, categoria: 'cervezas' },
+      { nombre: '3 Cordilleras', precio: 11000, categoria: 'cervezas' },
+      { nombre: 'Club colombia', precio: 8500, categoria: 'cervezas' },
+      { nombre: 'Corono', precio: 12000, categoria: 'cervezas' },
+      { nombre: 'Estrella', precio: 12000, categoria: 'cervezas' },
+      { nombre: 'Stella', precio: 12000, categoria: 'cervezas' },
+      { nombre: 'Colimocho', precio: 25000, categoria: 'cocteles' },
+      { nombre: 'Tinto de verano', precio: 22000, categoria: 'cocteles' },
+      { nombre: 'Mojito', precio: 22000, categoria: 'cocteles' },
+      { nombre: 'Cuba libre', precio: 21000, categoria: 'cocteles' },
+      { nombre: 'Muller', precio: 20000, categoria: 'cocteles' },
+      { nombre: 'Margarita', precio: 23000, categoria: 'cocteles' },
+      { nombre: 'Copa sangría', precio: 20000, categoria: 'sangria' },
+      { nombre: 'Jarra x2', precio: 20000, categoria: 'sangria' },
+      { nombre: 'Jarra x5', precio: 20000, categoria: 'sangria' },
+      { nombre: 'Vino blanco', precio: 19000, categoria: 'vino' },
+      { nombre: 'Vino casa', precio: 18000, categoria: 'vino' },
+      { nombre: 'Vino rosado', precio: 19000, categoria: 'vino' },
+      { nombre: 'Merlot', precio: 20500, categoria: 'vino' },
+      { nombre: 'Empaque', precio: 2000, categoria: 'otros' },
+      { nombre: 'Reserva', precio: 20000, categoria: 'otros' }
+    ];
+
+    const carrito = [];
+    let folio = parseInt(localStorage.getItem('folio') || '1');
+
+    // Función para guardar una factura en el historial
+    function guardarFacturaEnHistorial(factura) {
+      let historial = JSON.parse(localStorage.getItem('historialFacturas') || '[]');
+      historial.push(factura);
+      localStorage.setItem('historialFacturas', JSON.stringify(historial));
+    }
+
+    function mostrarProductos() {
+      const contenedor = document.getElementById('listaProductos');
+      contenedor.innerHTML = '';
+      productos.forEach((p, i) => {
+        contenedor.innerHTML += `
+          <tr class="producto" data-nombre="${p.nombre.toLowerCase()}" data-categoria="${p.categoria}">
+            <td>${p.nombre}</td>
+            <td>${p.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+            <td><input type="number" min="1" step="any" value="1" id="cantidad-${i}"></td>
+            <td><button onclick="agregarAlCarrito(${i})">Agregar</button></td>
+          </tr>`;
+      });
+    }
+
+    function filtrarProductos() {
+      const filtroTexto = document.getElementById('buscador').value.toLowerCase();
+      const filtroCategoria = document.getElementById('categoriaFiltro').value;
+      document.querySelectorAll('.producto').forEach(row => {
+        const nombre = row.dataset.nombre;
+        const categoria = row.dataset.categoria;
+        const coincideNombre = nombre.includes(filtroTexto);
+        const coincideCategoria = filtroCategoria === 'todas' || categoria === filtroCategoria;
+        row.style.display = (coincideNombre && coincideCategoria) ? '' : 'none';
+      });
+    }
+
+    function agregarAlCarrito(indice) {
+      const cantidad = parseFloat(document.getElementById(`cantidad-${indice}`).value);
+      if (cantidad <= 0 || isNaN(cantidad)) return;
+      const prod = productos[indice];
+      const existente = carrito.find(p => p.nombre === prod.nombre);
+      if (existente) {
+        existente.cantidad += cantidad;
+      } else {
+        carrito.push({ ...prod, cantidad });
+      }
+      actualizarCarrito();
+    }
+
+    function actualizarCarrito() {
+      const contenedor = document.getElementById('itemsCarrito');
+      contenedor.innerHTML = '';
+      let total = 0;
+      carrito.forEach((item, i) => {
+        const subtotal = item.precio * item.cantidad;
+        total += subtotal;
+        contenedor.innerHTML += `
+          <tr>
+            <td>${item.nombre}</td>
+            <td>${item.cantidad}</td>
+            <td>${item.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+            <td>${subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+            <td><button onclick="quitarDelCarrito(${i})">Eliminar</button></td>
+          </tr>`;
+      });
+      document.getElementById('totalCarrito').innerText = total.toLocaleString('es-CO', { style: 'currency', currency: 'COP' });
+      
+      // Guardar en localStorage
+      localStorage.setItem('carrito', JSON.stringify(carrito));
+    }
+
+    function cargarCarritoDesdeLocalStorage() {
+      const data = localStorage.getItem('carrito');
+      if (data) {
+        const items = JSON.parse(data);
+        items.forEach(item => carrito.push(item));
+        actualizarCarrito();
+      }
+    }
+
+    cargarCarritoDesdeLocalStorage();
+    mostrarProductos();
+
+    function quitarDelCarrito(index) {
+      carrito.splice(index, 1);
+      actualizarCarrito();
+    }
+
+    function vaciarCarrito() {
+      carrito.length = 0;
+      actualizarCarrito();
+      localStorage.removeItem('carrito');
+      document.getElementById('factura').classList.add('hidden');
+    }
+
+    function generarFactura() {
+      const mesa = document.getElementById('mesa').value;
+      if (!mesa || isNaN(mesa) || mesa < 1) {
+        alert('Por favor ingrese un número de mesa válido');
+        return;
+      }
+
+      const factura = document.getElementById('factura');
+      const detalle = document.getElementById('facturaDetalle');
+      let total = 0;
+      detalle.innerHTML = '';
+      
+      carrito.forEach(item => {
+        const subtotal = item.precio * item.cantidad;
+        total += subtotal;
+        detalle.innerHTML += `
+          <tr>
+            <td>${item.nombre}</td>
+            <td>${item.cantidad}</td>
+            <td>${item.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+            <td>${subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}</td>
+          </tr>`;
+      });
+      
+      document.getElementById('facturaTotal').innerText = total.toLocaleString('es-CO', { style: 'currency', currency: 'COP' });
+      document.getElementById('facturaFolio').innerText = folio;
+      document.getElementById('facturaMesa').innerText = mesa;
+      
+      const ahora = new Date();
+      document.getElementById('facturaFecha').innerText = ahora.toLocaleString('es-CO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      factura.classList.remove('hidden');
+      
+      // Guardar la factura en el historial
+      const facturaData = {
+        folio: folio,
+        mesa: mesa,
+        fecha: ahora.toISOString(),
+        items: [...carrito],
+        total: total
+      };
+      
+      guardarFacturaEnHistorial(facturaData);
+      
+      // Incrementar el folio y guardarlo
+      folio++;
+      localStorage.setItem('folio', folio.toString());
+    }
+
+    // Función para imprimir la factura (modificada)
+    function imprimirFactura() {
+      // Crear contenedor de impresión si no existe
+      if (!document.getElementById('printContainer')) {
+        const printContainer = document.createElement('div');
+        printContainer.id = 'printContainer';
+        printContainer.innerHTML = `
+          <div id="printContent"></div>
+          <div class="print-actions">
+            <button onclick="window.print()">🖨️ Imprimir Factura</button>
+            <button onclick="cerrarVentanaImpresion()">❌ Cerrar</button>
+          </div>
+        `;
+        document.body.appendChild(printContainer);
+      }
+      
+      // Clonar la factura y agregarla al contenedor de impresión
+      const factura = document.getElementById('factura').cloneNode(true);
+      factura.classList.remove('hidden');
+      factura.style.width = '100%';
+      factura.style.margin = '0';
+      factura.style.padding = '0';
+      
+      // Eliminar botones no necesarios para imprimir
+      const buttons = factura.querySelectorAll('button');
+      buttons.forEach(button => button.remove());
+      
+      // Reducir tamaños para impresión
+      const elementos = factura.querySelectorAll('*');
+      elementos.forEach(el => {
+        if (el.tagName === 'TABLE') {
+          el.style.fontSize = '12px';
+          const celdas = el.querySelectorAll('th, td');
+          celdas.forEach(celda => {
+            celda.style.padding = '3px';
+          });
+        }
+      });
+      
+      // Agregar al contenedor de impresión
+      document.getElementById('printContent').innerHTML = '';
+      document.getElementById('printContent').appendChild(factura);
+      
+      // Mostrar el contenedor de impresión
+      document.getElementById('printContainer').style.display = 'flex';
+      
+      // Asegurarse de que el contenedor de impresión esté al inicio
+      document.getElementById('printContainer').scrollTo(0, 0);
+    }
+
+    // Función para cerrar la ventana de impresión
+    function cerrarVentanaImpresion() {
+      document.getElementById('printContainer').style.display = 'none';
+    }
+
+    function generarPDF() {
+      const facturaElement = document.getElementById('factura');
+      
+      // Configurar opciones para html2canvas
+      const options = {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: facturaElement.offsetWidth,
+        height: facturaElement.offsetHeight,
+        windowWidth: facturaElement.scrollWidth,
+        windowHeight: facturaElement.scrollHeight
+      };
+      
+      // Crear PDF en orientación vertical (portrait) con tamaño carta (216x279 mm)
+      const pdf = new jsPDF('p', 'mm', 'letter');
+      
+      html2canvas(facturaElement, options).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Tamaño de la página carta en mm (216x279)
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        
+        // Calcular relación de aspecto para mantener proporciones
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Centrar la imagen en la página
+        const marginLeft = (pageWidth - imgWidth) / 2;
+        let marginTop = (pageHeight - imgHeight) / 2;
+        
+        // Si la imagen es más alta que la página, ajustar
+        if (imgHeight > pageHeight) {
+          marginTop = 10;
+        }
+        
+        // Agregar la imagen al PDF
+        pdf.addImage(imgData, 'PNG', marginLeft, marginTop, imgWidth, imgHeight);
+        
+        // Guardar el PDF
+        pdf.save(`Factura_${folio}_Mesa_${document.getElementById('mesa').value}.pdf`);
+      });
+    }
+
+    function exportarFacturasCSV() {
+      const historial = JSON.parse(localStorage.getItem('historialFacturas') || '[]');
+      
+      if (historial.length === 0) {
+        alert('No hay facturas para exportar');
+        return;
+      }
+      
+      // Crear el contenido CSV
+      let csvContent = "Folio,Mesa,Fecha,Producto,Cantidad,Precio Unitario,Subtotal,Total\n";
+      
+      historial.forEach(factura => {
+        const fecha = new Date(factura.fecha).toLocaleString('es-CO');
+        
+        factura.items.forEach(item => {
+          csvContent += `${factura.folio},${factura.mesa},"${fecha}",${item.nombre},${item.cantidad},${item.precio},${item.precio * item.cantidad},${factura.total}\n`;
+        });
+        
+        // Si hay más de un producto, agregar línea con el total
+        if (factura.items.length > 1) {
+          csvContent += `${factura.folio},${factura.mesa},"${fecha}",TOTAL,,,${factura.total},${factura.total}\n`;
+        }
+      });
+      
+      // Crear un enlace para descargar el archivo
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `facturas_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    mostrarProductos();
+  </script>
+</body>
+</html>
